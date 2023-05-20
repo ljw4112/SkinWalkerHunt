@@ -3,17 +3,23 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using System;
 
 public static class Utils
 {
-    public static T GetData<T>(UIOptionsKey key, Dictionary<UIOptionsKey, object> options)
+    public static Data GetDataClass<T>() where T : UIBase
     {
-        T result = default(T);
+        Data data = UIManager.Instance.GetCachedUIData<T>();
+        if (data != null)
+            return data;
+        else
+        {
+            Type type = Type.GetType($"Data_{typeof(T)}");
+            Data createdData = (Data)Activator.CreateInstance(type);
+            UIManager.Instance.AddUIData(type.ToString(), createdData);
 
-        if (options == null) return result;
-        if (!options.ContainsKey(key)) return result;
-
-        return (T)options[key];
+            return createdData;
+        }
     }
 
     public static string GetFilePath(string path, string fileName)

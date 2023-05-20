@@ -9,7 +9,7 @@ public abstract class UIBase : MonoBehaviour
     /// UI에 필요한 데이터 셋팅
     /// </summary>
     /// <param name="options"></param>
-    public abstract void Initialize(Dictionary<UIOptionsKey, object> options);
+    public abstract void Initialize(Data data);
 
     /// <summary>
     /// Initialize된 데이터를 바탕으로 UI 세팅

@@ -5,8 +5,8 @@ using UnityEngine;
 
 public class UIMenu : UIBase
 {
-    public override void Initialize(Dictionary<UIOptionsKey, object> options)
+    public override void Initialize(Data data)
     {
-        Debug.Log(Utils.GetData<int>(UIOptionsKey.Data, options));
+        Data_UIMenu menuData = data as Data_UIMenu;
     }
 }

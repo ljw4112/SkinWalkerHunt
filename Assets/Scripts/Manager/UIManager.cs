@@ -1,18 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Options;
+using UnityEditor;
 
 public class UIManager : MonoSingleton<UIManager>
 {
-    private Stack<UIBase> uiStack = new Stack<UIBase>();                                        // UI-Depth 관리
+    [SerializeField] private UIStack uiStack = new UIStack();                                   // UI-Depth 관리
     private Dictionary<string, UIBase> cachedUITable = new Dictionary<string, UIBase>();        // UI 풀링용
+    private Dictionary<string, Data> cachedUIData = new Dictionary<string, Data>();             // UI 전달 데이터
 
     /// <summary>
     /// UI 출력
     /// </summary>
     /// <typeparam name="T"> UIBase에 상속받은 UI </typeparam>
     /// <param name="options"> UI 켜질 때 넘겨줄 데이터들 </param>
-    public UIBase Show<T>(Dictionary<UIOptionsKey, object> options)
+    public UIBase Show<T>(Data data)
     {
         UIBase ui;
 
@@ -20,7 +22,6 @@ public class UIManager : MonoSingleton<UIManager>
         if (cachedUITable.ContainsKey(typeof(T).ToString()))
         {
             ui = cachedUITable[typeof(T).ToString()];
-            ui.transform.SetAsLastSibling();
         }
         else
         {
@@ -30,7 +31,10 @@ public class UIManager : MonoSingleton<UIManager>
             gameObject.name = go.name;
 
             if (go.TryGetComponent(out ui))
+            {
                 uiStack.Push(ui);
+                cachedUITable.Add(typeof(T).ToString(), ui);
+            }
         }
 
         if (ui == null)
@@ -39,7 +43,7 @@ public class UIManager : MonoSingleton<UIManager>
             return null;
         }
 
-        ui.Initialize(options);                         // UI 데이터 초기화
+        ui.Initialize(data);                         // UI 데이터 초기화
         ui.UpdateUI(UIStatus.CompleteShow);             // UI 그래픽 객체 초기화
 
         return ui;
@@ -80,4 +84,115 @@ public class UIManager : MonoSingleton<UIManager>
 
         return null;
     }
+
+    /// <summary>
+    /// 해당 UI 데이터가 이미 만들어져있는지 판단하고 있으면 만들어져있는 걸 사용함.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public Data GetCachedUIData<T>() where T : UIBase
+    {
+        string name = $"Data_{typeof(T)}";
+        if (cachedUIData.ContainsKey(name))
+        {
+            Debug.Log($"이미 만들어져있음 Data_{typeof(T)}");
+            cachedUIData[name].Initialize();
+            return cachedUIData[name];
+        }
+
+        Debug.Log($"새로 만들어야됨 Data_{typeof(T)}");
+        return null;
+    }
+
+    public void AddUIData(string name, Data data)
+    {
+        if (string.IsNullOrEmpty(name)) return;
+        if (data == null) return;
+
+        if (!cachedUIData.TryAdd(name, data))
+        {
+            Debug.LogError("Error where add UIData");
+        }
+    }
+
+    #region UI Data Structure
+    public class UIStack
+    {
+        private List<UIBase> uiStack = new List<UIBase>();
+        public int Count => uiStack.Count;
+        public string this[int i]
+        {
+            get { return uiStack[i].name; }
+        }
+
+        public UIStack()
+        {
+
+        }
+
+        public void Push(UIBase ui, bool check = true)
+        {
+            if (check)
+            {
+                int index = Contains(ui);
+                if (index < 0)
+                    uiStack.Add(ui);
+                else
+                {
+                    uiStack.RemoveAt(index);
+                    Push(ui, false);
+                }
+            }
+            else
+                uiStack.Add(ui);
+        }
+
+        public void Pop()
+        {
+            uiStack.RemoveAt(uiStack.Count - 1);
+        }
+
+        public UIBase Peek()
+        {
+            return uiStack[uiStack.Count - 1];
+        }
+
+        private int Contains(UIBase ui)
+        {
+            for (int i = 0; i < uiStack.Count; i++)
+            {
+                UIBase tmpUI = uiStack[i];
+                if (tmpUI.name == ui.name)
+                    return i;
+            }
+
+            return -1;
+        }
+    }
+    #endregion
+
+    #region Editor
+    // This class is inside the TestClass so it could access its private fields
+    // this custom editor will show up on any object with TestScript attached to it
+    // you don't need (and can't) attach this class to a gameobject
+    [CustomEditor(typeof(UIManager))]
+    public class StackPreview : Editor
+    {
+        public override void OnInspectorGUI()
+        {
+
+            // get the target script as TestScript and get the stack from it
+            var ts = (UIManager)target;
+            var stack = ts.uiStack;
+
+            // add a label for each item, you can add more properties
+            // you can even access components inside each item and display them
+            // for example if every item had a sprite we could easily show it 
+            for (int i = 0; i < stack.Count; i++)
+            {
+                GUILayout.Label(stack[i]);
+            }
+        }
+    }
+    #endregion
 }
